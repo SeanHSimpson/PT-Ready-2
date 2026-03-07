@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>PFRA Preparedness Tool — March 2026 Standards</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="./styles.css">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#e8a020">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PT Ready">
+<meta name="mobile-web-app-capable" content="yes">
+</head>
+<body>
+
+<!-- TIMER MODAL -->
+<div id="timer-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:#0f1318;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
+  <div id="timer-label" style="font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:13px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);">REST</div>
+  <div id="timer-sub" style="font-size:13px;color:var(--muted);min-height:18px;margin-top:-10px;"></div>
+  <div style="position:relative;width:220px;height:220px;margin:8px 0;">
+    <svg width="220" height="220" viewBox="0 0 220 220" style="transform:rotate(-90deg);">
+      <circle cx="110" cy="110" r="98" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="10"/>
+      <circle id="timer-ring-prog" cx="110" cy="110" r="98" fill="none" stroke="var(--accent)" stroke-width="10" stroke-linecap="round"
+        stroke-dasharray="616" stroke-dashoffset="0" style="transition:stroke-dashoffset 0.9s linear;"/>
+    </svg>
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+      <div id="timer-display" style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:80px;color:#fff;letter-spacing:4px;line-height:1;transition:color 0.3s;">0:00</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
+    <button id="timer-pause-btn" onclick="toggleTimerPause()" style="padding:14px 32px;background:var(--accent);color:#000;border:none;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;letter-spacing:1px;cursor:pointer;min-width:110px;">⏸ PAUSE</button>
+    <button onclick="timerReset()" style="padding:14px 24px;background:rgba(255,255,255,0.08);color:#ccc;border:none;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;letter-spacing:1px;cursor:pointer;">↺ RESET</button>
+    <button onclick="closeTimer()" style="padding:14px 24px;background:rgba(255,255,255,0.08);color:#ccc;border:none;border-radius:8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;letter-spacing:1px;cursor:pointer;">✕ SKIP</button>
+  </div>
+</div>
+
+<!-- PWA Install Banner -->
+<div id="pwa-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:200;background:#0f1318;border-top:2px solid #a07840;padding:12px 20px;display:none;align-items:center;gap:12px;flex-wrap:wrap;">
+  <div style="flex:1;min-width:200px;">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;letter-spacing:2px;color:#a07840;text-transform:uppercase;">Install PT Tracker</div>
+    <div style="font-size:12px;color:#5a6a7a;margin-top:2px;">Add to your home screen for app-like access</div>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <button id="pwa-install-btn" onclick="installPWA()" style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:2px;text-transform:uppercase;background:#a07840;color:#000;border:none;padding:9px 18px;border-radius:3px;cursor:pointer;">Install</button>
+    <button onclick="document.getElementById('pwa-banner').style.display='none'" style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:2px;text-transform:uppercase;background:transparent;color:#5a6a7a;border:1px solid #1e2730;padding:9px 14px;border-radius:3px;cursor:pointer;">Later</button>
+  </div>
+</div>
+
+<!-- About Modal -->
+<div class="about-modal" id="about-modal" onclick="if(event.target===this)closeAbout()">
+  <div class="about-card">
+    <h2>PT Ready</h2>
+    <div class="about-ver">Version 1.3.1 · March 2026</div>
+
+    <!-- WHAT IS PT READY — static, no collapse -->
+    <div class="about-section about-section-static">
+      <h3>What is PT Ready?</h3>
+      <p>PT Ready is an unofficial PFRA fitness preparation tool built for U.S. Air Force members. It uses the March 2026 PFRA scoring standards and the Warfighter's Fitness Playbook 2.0 (Feb 2026) to help you calculate your score, generate personalized AI-driven training plans, and track your progress — all in one place on your phone.</p>
+    </div>
+
+    <!-- FEATURES — collapsed by default -->
+    <div class="about-acc" id="about-acc-features">
+      <div class="about-acc-header" onclick="toggleAboutAcc('features')">
+        <span>Features</span><span style="display:flex;align-items:center;gap:8px;"><span style="font-size:9px;letter-spacing:1px;color:#7a6030;font-weight:400;text-transform:uppercase;" class="about-tap-hint">tap to expand</span><span class="about-acc-chevron">▼</span></span>
+      </div>
+      <div class="about-acc-body">
+        <ul>
+          <li><strong>Score Calculator</strong> — Enter your push-ups, sit-ups, cardio, and waist measurement to get your total PFRA score and component breakdown by age group and gender. Includes built-in event timers and official HAMR audio to facilitate a mock test.</li>
+          <li><strong>AI Training Plan</strong> — Generate a personalized training plan based on your scores and selected test date. Plans follow the Warfighter's Fitness Playbook structure with warm-up, main workout, and cool-down.</li>
+          <li><strong>Workout Timers</strong> — Tap any rest or hold to launch a fullscreen countdown timer that auto-returns when done.</li>
+          <li><strong>Workout Log</strong> — Log daily sessions and track completion across your plan.</li>
+          <li><strong>Score History</strong> — Save and review past scores to see your progress over time.</li>
+          <li><strong>PDF Export</strong> — Download your training plan as a formatted PDF.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- HOW TO USE — collapsed by default -->
+    <div class="about-acc" id="about-acc-howto">
+      <div class="about-acc-header" onclick="toggleAboutAcc('howto')">
+        <span>How to Use</span><span style="display:flex;align-items:center;gap:8px;"><span style="font-size:9px;letter-spacing:1px;color:#7a6030;font-weight:400;text-transform:uppercase;" class="about-tap-hint">tap to expand</span><span class="about-acc-chevron">▼</span></span>
+      </div>
+      <div class="about-acc-body">
+        <ul>
+          <li>Start on the <strong>Calculator</strong> tab — enter your age, gender, and scores, then tap Calculate.</li>
+          <li>Go to <strong>AI Plan</strong> — review your scores and tap Generate Plan. This calls the AI to build a custom program length based on your selected test date.</li>
+          <li>Navigate days with the arrows. Tap exercises to check them off. Tap rest buttons to start a timer.</li>
+          <li>Tap <strong>Log This Workout</strong> when done to record the session.</li>
+          <li>Use the <strong>History</strong> tab to review past scores and plan progress.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- INSTALL — collapsed by default -->
+    <div class="about-acc" id="about-acc-install">
+      <div class="about-acc-header" onclick="toggleAboutAcc('install')">
+        <span>Install App</span><span style="display:flex;align-items:center;gap:8px;"><span style="font-size:9px;letter-spacing:1px;color:#7a6030;font-weight:400;text-transform:uppercase;" class="about-tap-hint">tap to expand</span><span class="about-acc-chevron">▼</span></span>
+      </div>
+      <div class="about-acc-body">
+        <div class="install-platform">
+          <div class="install-platform-title">🍎 iPhone / iPad (Safari)</div>
+          <div class="about-ios-step">
+            <span class="about-step-num">1</span>
+            <span>Tap the <strong>Share button</strong> at the bottom of Safari — the box with an arrow pointing up</span>
+          </div>
+          <div class="about-ios-step">
+            <span class="about-step-num">2</span>
+            <span>Scroll down and tap <strong>"Add to Home Screen"</strong></span>
+          </div>
+          <div class="about-ios-step">
+            <span class="about-step-num">3</span>
+            <span>Tap <strong>"Add"</strong> in the top right — PT Ready will appear on your home screen</span>
+          </div>
+        </div>
+        <div class="install-platform">
+          <div class="install-platform-title">🤖 Android (Chrome)</div>
+          <div class="about-ios-step">
+            <span class="about-step-num">1</span>
+            <span>Tap the <strong>three-dot menu</strong> in the top right of Chrome</span>
+          </div>
+          <div class="about-ios-step">
+            <span class="about-step-num">2</span>
+            <span>Tap <strong>"Add to Home Screen"</strong> or <strong>"Install App"</strong></span>
+          </div>
+          <div class="about-ios-step">
+            <span class="about-step-num">3</span>
+            <span>Tap <strong>"Install"</strong> — PT Ready will appear on your home screen</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LINKS — expanded, no collapse -->
+    <div class="about-section about-section-static" style="margin-top:10px;">
+      <h3>Links</h3>
+      <ul>
+        <li><a href="https://www.afpc.af.mil/Portals/70/documents/FITNESS/Tab%204.%20The%20Warfighter's%20Fitness%20Playbook%20%202.0%20Feb%202026.pdf" target="_blank" style="color:var(--accent);">Warfighter's Fitness Playbook 2.0 (Feb 2026)</a></li>
+        <li><a href="https://www.afpc.af.mil/Portals/70/documents/FITNESS/PFRA%20Scoring%20Charts.pdf" target="_blank" style="color:var(--accent);">PFRA Scoring Charts (Official PDF)</a></li>
+        <li><a href="https://www.afpc.af.mil/Portals/70/documents/FITNESS/Tab%205.%20Pregnancy%20&%20Postpardum%20Performance%20Training%20Guide.pdf" target="_blank" style="color:var(--accent);">Pregnancy & Postpartum Performance Training Guide</a></li>
+      </ul>
+      <p style="margin-top:8px;font-size:11px;color:#556;">This tool is unofficial and not affiliated with or endorsed by the U.S. Air Force or AFPC.</p>
+    </div>
+
+    <!-- VERSION NOTES — collapsed by default -->
+    <div class="about-acc" id="about-acc-versions">
+      <div class="about-acc-header" onclick="toggleAboutAcc('versions')">
+        <span>Version Notes</span><span style="display:flex;align-items:center;gap:8px;"><span style="font-size:9px;letter-spacing:1px;color:#7a6030;font-weight:400;text-transform:uppercase;" class="about-tap-hint">tap to expand</span><span class="about-acc-chevron">▼</span></span>
+      </div>
+      <div class="about-acc-body">
+        <div class="release-item">
+          <span class="release-ver">v1.3.1</span><span class="release-date">Mar 2026</span>
+          <ul style="margin-top:6px;">
+            <li>Minor UX tweaks</li>
+          </ul>
+        </div>
+        <div class="release-item">
+          <span class="release-ver">v1.3</span><span class="release-date">Feb 2026</span>
+          <ul style="margin-top:6px;">
+            <li>Renamed to PT Ready</li>
+            <li>In-app feedback mechanism</li>
+            <li>Fullscreen auto-start timers with auto-return</li>
+            <li>Haptic feedback on primary action buttons</li>
+            <li>Warm-up / cool-down section time estimates removed</li>
+          </ul>
+        </div>
+        <div class="release-item">
+          <span class="release-ver">v1.2</span><span class="release-date">Feb 2026</span>
+          <ul style="margin-top:6px;">
+            <li>Warfighter's Fitness Playbook 2.0 integration</li>
+            <li>Three-section workout display (Warm-Up / Main / Cool-Down)</li>
+            <li>Cardio auto-progression by week</li>
+            <li>March 2026 PFRA scoring standards</li>
+            <li>PDF export</li>
+          </ul>
+        </div>
+        <div class="release-item">
+          <span class="release-ver">v1.1</span><span class="release-date">Jan 2026</span>
+          <ul style="margin-top:6px;">
+            <li>AI plan generation via Groq API</li>
+            <li>Score history and workout logging</li>
+            <li>WHTR component added</li>
+          </ul>
+        </div>
+        <div class="release-item">
+          <span class="release-ver">v1.0</span><span class="release-date">Jan 2026</span>
+          <ul style="margin-top:6px;">
+            <li>Initial release — score calculator only</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+<button class="close-about" onclick="closeAbout()">✕ Close</button>
+  </div>
+</div>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="header-accent"></div>
+    <div class="logo">
+      <div class="logo-main">PT Ready</div>
+      <div class="logo-sub">March 2026 · PFRA Standards</div>
+    </div>
+    <div class="header-right">
+      <span class="header-ver">v1.3.1</span>
+      <button class="about-btn" onclick="openAbout()">About</button>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="tabs">
+  <button class="tab active" onclick="switchTab('calc',this)">
+    <span class="tab-icon">🧮</span>Calculator
+  </button>
+  <button class="tab" onclick="switchTab('ai',this)">
+    <span class="tab-icon" style="display:flex;align-items:center;justify-content:center;height:24px;">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="85.0 111.0 14.5 18.0" width="24" height="24">
+<path
+     style="fill:#728ea0;fill-opacity:1;stroke-width:0.0194366"
+     d="m 90.786376,127.73044 c -0.752473,-0.0154 -1.057675,-0.0364 -1.546677,-0.10651 -1.283819,-0.18406 -1.484466,-0.22439 -2.175446,-0.43725 -0.478449,-0.14739 -0.609247,-0.20888 -0.647522,-0.30442 -0.01266,-0.0316 -0.02994,-0.21314 -0.03841,-0.40344 -0.04195,-0.94249 -0.161356,-2.59702 -0.308532,-4.275 -0.03969,-0.45249 -0.09133,-1.04415 -0.114754,-1.3148 -0.0275,-0.31769 -0.04294,-0.7346 -0.04358,-1.17639 -9.28e-4,-0.64568 0.0029,-0.70644 0.06713,-1.07644 0.22681,-1.30573 0.460251,-1.7835 1.112264,-2.2764 0.490778,-0.371 1.307211,-0.73443 1.844274,-0.82095 0.21275,-0.0343 0.283237,-0.0307 0.44484,0.0223 0.342008,0.11222 0.886499,0.16558 1.415302,0.1387 0.845977,-0.043 1.629489,-0.21035 1.963353,-0.41934 0.167558,-0.10488 0.200656,-0.10821 0.512403,-0.0516 0.698547,0.12695 1.353467,0.37198 1.934459,0.72374 0.587692,0.35582 0.910744,0.66346 1.093011,1.04084 0.24573,0.50879 0.41907,1.37783 0.359568,1.80269 -0.02753,0.19659 -0.04579,0.23761 -0.126808,0.28485 -0.115426,0.0673 -0.565138,0.13145 -1.187725,0.1694 -0.613631,0.0374 -1.229222,0.0497 -3.144557,0.0629 -1.1628,0.008 -2.081994,0.0207 -2.174167,0.0299 -0.219463,0.0221 -0.363953,0.0532 -0.651021,0.14023 -0.490095,0.14862 -0.836415,0.36953 -1.094484,0.69816 -0.247864,0.31564 -0.28015,0.45797 -0.280803,1.23791 -4.04e-4,0.47789 0.005,0.55835 0.04355,0.64574 0.155321,0.35236 0.894721,0.87372 1.515179,1.06838 0.282478,0.0886 0.849465,0.149 1.880173,0.20023 0.984012,0.0489 1.382946,0.0569 3.205975,0.064 1.033651,0.004 1.934641,0.0122 2.0022,0.0181 l 0.122834,0.0107 0.0321,0.0767 c 0.04581,0.10948 0.02485,0.6158 -0.03004,0.72548 -0.0249,0.0498 -0.05715,0.0832 -0.0857,0.0889 -0.306729,0.0609 -2.267969,0.0516 -3.564537,-0.017 -0.622292,-0.0329 -1.86031,-0.0446 -2.335665,-0.022 -1.010421,0.048 -1.725277,0.14603 -2.214982,0.30386 -0.337483,0.10877 -0.529737,0.26473 -0.697796,0.56606 -0.06242,0.11193 -0.06863,0.14244 -0.0688,0.33831 -1.86e-4,0.20911 0.0025,0.22014 0.09264,0.38444 0.05106,0.093 0.131958,0.21297 0.179784,0.26652 0.106983,0.11978 0.36491,0.29337 0.557671,0.3753 0.336863,0.1432 1.08559,0.32887 1.466986,0.3638 0.38202,0.035 0.978354,0.0505 1.951504,0.0507 1.515474,3.9e-4 2.382826,-0.0369 2.997156,-0.12886 0.54688,-0.0818 0.639918,-0.11834 0.665745,-0.26123 0.01926,-0.10659 0.09141,-0.15571 0.217354,-0.148 0.06368,0.004 0.08522,0.0174 0.142627,0.0892 0.09679,0.12107 0.148917,0.28802 0.151246,0.4844 0.0024,0.19908 -0.04205,0.29984 -0.16414,0.37235 -0.157375,0.0935 -0.257843,0.11266 -1.344485,0.25685 -0.586585,0.0778 -0.829306,0.103 -1.117791,0.11593 -0.369916,0.0166 -2.330198,0.032 -2.812905,0.0221 z"
+     id="path5" />
+  <path
+     style="fill:#728ea0;fill-opacity:1;stroke-width:0.0194366"
+     d="m 90.614408,114.58754 c -0.109906,-0.0278 -0.143946,-0.0455 -0.182427,-0.0948 -0.04683,-0.0601 -0.04677,-0.0651 0.0063,-0.49977 0.02948,-0.24151 0.07538,-0.71591 0.102014,-1.05422 0.07266,-0.92312 0.100387,-1.08521 0.191669,-1.12052 0.08322,-0.0322 0.15478,0.18927 0.237842,0.73608 0.103976,0.6845 0.208168,1.30455 0.259349,1.54341 0.08164,0.38099 0.07058,0.41713 -0.148858,0.48673 -0.149769,0.0475 -0.286432,0.0484 -0.465877,0.003 z"
+     id="path6" />
+  <path
+     style="fill:#728ea0;fill-opacity:1;stroke-width:0.0194366"
+     d="m 89.901969,115.41236 c -0.240072,-0.0294 -0.399236,-0.0934 -0.482196,-0.19382 -0.03391,-0.041 -0.03264,-0.0496 0.01618,-0.1088 0.09794,-0.11874 0.238228,-0.22094 0.349586,-0.25468 0.127493,-0.0386 0.344371,-0.0424 0.845136,-0.0147 0.404402,0.0224 0.598611,0.006 0.780257,-0.0659 0.0686,-0.0272 0.165353,-0.0637 0.214999,-0.0811 l 0.09027,-0.0317 0.229104,0.0731 c 0.421533,0.13455 0.571586,0.22786 0.511773,0.31825 -0.08723,0.13182 -0.530508,0.26948 -1.068916,0.33194 -0.216362,0.0251 -1.336536,0.0458 -1.486188,0.0275 z"
+     id="path7" />
+  <path
+     style="fill:#e7e8be;fill-opacity:1;stroke-width:0.0194366"
+     d="m 92.98511,122.67082 c -0.904955,-0.0345 -1.696265,-0.12717 -1.953344,-0.22876 -0.214479,-0.0847 -0.432235,-0.30189 -0.555826,-0.55424 -0.06106,-0.12468 -0.06744,-0.1601 -0.0677,-0.376 -2.63e-4,-0.21786 0.0054,-0.24893 0.0655,-0.36137 0.140503,-0.26274 0.422112,-0.44128 0.965127,-0.61188 0.250366,-0.0787 0.433195,-0.10876 0.585354,-0.0963 0.461439,0.0376 1.850629,0.34108 2.473008,0.54021 0.319937,0.10237 0.434255,0.1624 0.535401,0.28119 0.304141,0.35719 0.202275,0.85801 -0.253309,1.24539 -0.185073,0.15737 -0.211158,0.16169 -0.995785,0.16482 -0.358063,0.001 -0.717353,5e-5 -0.798424,-0.003 z m -0.745835,-0.63219 c 0.0418,-0.0155 0.09926,-0.0611 0.135824,-0.10787 0.112699,-0.14419 0.08097,-0.4169 -0.05801,-0.49858 -0.05801,-0.0341 -0.07737,-0.0357 -0.433356,-0.0357 -0.548616,0 -0.571039,0.0116 -0.566905,0.29217 0.0027,0.18529 0.03848,0.27531 0.123144,0.31003 0.158935,0.0652 0.662919,0.0904 0.799303,0.0399 z"
+     id="path10" />
+  <path
+     style="fill:#e7e8be;fill-opacity:1;stroke-width:0.0194366"
+     d="m 95.172172,122.66577 c -0.008,-0.008 0.04769,-0.0998 0.123784,-0.20376 0.212676,-0.29052 0.240106,-0.36898 0.240787,-0.68877 5.43e-4,-0.24681 -0.0046,-0.27929 -0.06218,-0.39203 -0.07459,-0.14611 -0.06429,-0.18567 0.07129,-0.27365 0.05086,-0.033 0.247251,-0.12463 0.436416,-0.20361 0.926393,-0.38677 1.324757,-0.49355 1.688241,-0.4525 0.506334,0.0572 0.96401,0.33214 1.112325,0.66824 0.06137,0.13907 0.07719,0.53634 0.02725,0.68431 -0.06747,0.19989 -0.303279,0.44516 -0.625096,0.65017 -0.207769,0.13235 -0.296921,0.15818 -0.618157,0.17907 -0.687162,0.0447 -2.3602,0.0674 -2.394656,0.0325 z m 1.617796,-0.55527 c 0.194721,-0.0345 0.256682,-0.11315 0.277651,-0.35264 0.01188,-0.13569 0.0086,-0.14991 -0.04586,-0.19991 -0.09332,-0.0856 -0.165052,-0.10015 -0.486738,-0.0985 -0.155385,7.9e-4 -0.312255,0.009 -0.3486,0.0185 -0.09268,0.0239 -0.11787,0.0952 -0.118033,0.33387 -1.55e-4,0.20252 0.02264,0.29417 0.07926,0.3189 0.0394,0.0172 0.515517,0.002 0.642325,-0.0202 z"
+     id="path11" />
+  <path
+     style="fill:#e7e8be;fill-opacity:1;stroke-width:0.0194366"
+     d=""
+     id="path12" />
+  <path
+     style="fill:#e7e8be;fill-opacity:1;stroke-width:0.0194366"
+     d="m 89.250947,125.95556 c -0.367793,-0.0475 -0.750748,-0.12533 -0.890091,-0.18083 -0.03015,-0.012 -0.06602,-0.0471 -0.07971,-0.0779 -0.05001,-0.11269 -0.01745,-0.45866 0.05651,-0.60038 0.01987,-0.0381 0.04572,-0.0569 0.08258,-0.0602 0.02951,-0.003 0.239549,0.0273 0.46675,0.0666 0.227201,0.0392 0.471922,0.0815 0.543823,0.0939 0.195282,0.0337 0.208749,0.0627 0.195317,0.42039 -0.01109,0.2953 -0.03367,0.37057 -0.110478,0.36829 -0.02398,-7.1e-4 -0.143096,-0.0142 -0.264702,-0.0299 z"
+     id="path13" />
+  <path
+     style="fill:#e7e8be;fill-opacity:1;stroke-width:0.0194366"
+     d="m 89.181944,126.44139 c -0.210474,-0.0575 -0.4871,-0.17654 -0.566967,-0.24396 -0.04381,-0.037 -0.04586,-0.0451 -0.01459,-0.0574 0.08116,-0.0321 0.510707,-0.003 0.72426,0.049 0.111769,0.0272 0.229174,0.0864 0.270261,0.1361 0.04433,0.0537 0.04782,0.12534 0.0073,0.15067 -0.05366,0.0336 -0.222066,0.0198 -0.420309,-0.0344 z"
+     id="path14" />
+  <path
+     style="fill:#e7e8be;fill-opacity:1;stroke-width:0.0194366"
+     d="m 89.393059,126.477 c -0.188255,-0.0214 -0.524896,-0.13921 -0.713291,-0.24961 -0.124701,-0.0731 -0.107895,-0.0869 0.105701,-0.0869 0.347883,0 0.679187,0.0737 0.784867,0.1747 0.02403,0.023 0.03693,0.0611 0.03228,0.0954 -0.0092,0.0683 -0.05783,0.0836 -0.209561,0.0664 z"
+     id="path15" />
+  <path
+     style="fill:#e7e8be;fill-opacity:1;stroke-width:0.0194366"
+     d="m 89.07575,124.9181 c -0.08285,-0.0113 -0.186307,-0.0321 -0.229913,-0.0462 l -0.07928,-0.0257 0.06608,-0.0432 c 0.16641,-0.10873 0.642818,-0.19185 0.750365,-0.13093 0.06995,0.0396 0.06969,0.19425 -3.96e-4,0.23813 -0.05914,0.037 -0.268571,0.0402 -0.50685,0.008 z"
+     id="path16" />
+  <path
+     style="fill:#e7e8be;fill-opacity:1;stroke-width:0.0194366"
+     d="m 91.506676,125.07089 c -0.218136,-0.0299 -0.608994,-0.0528 -0.92558,-0.0541 -0.361049,-0.002 -0.530137,-0.0172 -0.572164,-0.0532 -0.02347,-0.0201 -0.03326,-0.0812 -0.03326,-0.20757 v -0.17909 l 0.497479,-0.0191 c 1.220798,-0.0469 1.158429,-0.0471 1.201271,0.003 0.01608,0.0188 0.03329,0.14004 0.04024,0.28341 0.01007,0.20776 0.0063,0.25029 -0.02201,0.24901 -0.01878,-8.5e-4 -0.10247,-0.0109 -0.185972,-0.0224 z"
+     id="path17" />
+  <path
+     style="fill:#e7e8be;fill-opacity:1;stroke-width:0.0194366"
+     d="m 90.700392,126.06329 c -0.135118,-0.006 -0.353456,-0.0163 -0.485196,-0.0226 l -0.239527,-0.0115 v -0.4104 -0.41041 l 0.588343,0.0343 c 0.872211,0.0509 1.069057,0.0708 1.095261,0.11109 0.06309,0.0969 0.05126,0.65363 -0.01495,0.70356 -0.03181,0.024 -0.483453,0.0268 -0.943932,0.006 z"
+     id="path18" />
+  <path
+     style="fill:#e7e8be;fill-opacity:1;stroke-width:0.0194366"
+     d="m 90.553304,126.67729 c -0.274956,-0.0173 -0.456511,-0.0495 -0.518035,-0.0921 -0.03851,-0.0266 -0.04889,-0.0611 -0.05578,-0.18531 l -0.0085,-0.15261 0.09445,0.008 c 0.05195,0.004 0.326605,0.0225 0.610352,0.0399 0.581598,0.0357 0.852782,0.0643 0.936115,0.0984 0.107749,0.0442 0.134277,0.22385 0.04028,0.27276 -0.04691,0.0244 -0.768623,0.0314 -1.098911,0.0106 z"
+     id="path19" />
+  <path
+     style="fill:#e7e8be;fill-opacity:1;stroke-width:0.0194366"
+     d="m 92.096864,126.68491 c -0.03059,-0.0292 -0.04475,-0.0844 -0.05272,-0.20556 l -0.0109,-0.1656 0.230265,0.006 c 1.383513,0.0354 1.419812,0.0386 1.455894,0.12997 0.01202,0.0304 0.01412,0.0811 0.0047,0.11263 -0.0136,0.0454 -0.03368,0.0616 -0.09635,0.078 -0.106457,0.0278 -0.389837,0.0505 -0.86372,0.0691 -0.597292,0.0234 -0.617845,0.0227 -0.667143,-0.0244 z"
+     id="path20" />
+  <path
+     style="fill:#e7e8be;fill-opacity:1;stroke-width:0.0194366"
+     d="m 92.039285,125.74251 v -0.38263 l 0.202677,-0.01 c 0.484589,-0.0231 1.16229,-0.0408 1.232176,-0.0322 0.138376,0.017 0.204383,0.0398 0.236374,0.0815 0.02062,0.0269 0.03551,0.13755 0.04281,0.31805 0.01035,0.25597 0.0078,0.27863 -0.03458,0.30119 -0.03529,0.0188 -0.155447,0.0287 -0.524821,0.0432 -0.263479,0.0103 -0.606186,0.0287 -0.761572,0.0408 -0.155385,0.0121 -0.307393,0.0221 -0.337795,0.0222 l -0.05528,1.3e-4 z"
+     id="path21" />
+  <path
+     style="fill:#e7e8be;fill-opacity:1;stroke-width:0.0194366"
+     d="m 92.079063,124.91414 c -0.0089,-0.074 -0.02287,-0.18127 -0.03112,-0.23836 l -0.01501,-0.1038 h 0.875298 c 0.80698,0 0.875299,0.002 0.875299,0.0261 0,0.0144 -0.01278,0.12162 -0.02841,0.23836 l -0.02841,0.21224 h -0.815769 -0.815768 z"
+     id="path22" />
+  <path
+     style="fill:#e7e8be;fill-opacity:1;stroke-width:0.0194366"
+     d="m 94.102902,124.83213 v -0.26408 l 0.423778,0.0109 c 0.571553,0.0148 0.751062,0.0295 0.810421,0.0667 0.06107,0.0382 0.109459,0.25136 0.07118,0.31351 -0.02842,0.0461 -0.0161,0.0445 -0.543802,0.0738 -0.168897,0.009 -0.373415,0.0237 -0.454487,0.032 -0.08107,0.008 -0.183329,0.0186 -0.227243,0.0231 l -0.07984,0.008 z"
+     id="path23" />
+  <path
+     style="fill:#e7e8be;fill-opacity:1;stroke-width:0.0194366"
+     d="m 94.102902,125.6638 v -0.38444 h 0.666044 0.666044 l -0.01159,0.27295 c -0.01361,0.32042 -0.04585,0.40202 -0.173613,0.43936 -0.12503,0.0366 -0.404331,0.0566 -0.789228,0.0566 h -0.357655 z"
+     id="path24" />
+  <path
+     style="fill:#e7e8be;fill-opacity:1;stroke-width:0.0194366"
+     d="m 94.158923,126.62702 c -0.051,-0.0319 -0.03574,-0.28286 0.01929,-0.31729 0.05449,-0.0341 0.433991,-0.0577 0.826669,-0.0514 0.420363,0.007 0.424596,0.009 0.34878,0.17215 -0.06276,0.13521 -0.04453,0.12851 -0.464623,0.17055 -0.420781,0.0421 -0.689108,0.0517 -0.730118,0.026 z"
+     id="path25" />
+
+</svg>
+</span>AI Plan
+  </button>
+  <button class="tab" onclick="switchTab('log',this)">
+    <span class="tab-icon">📝</span>Log
+  </button>
+  <button class="tab" onclick="switchTab('history',this)">
+    <span class="tab-icon">📊</span>History
+  </button>
+</nav>
+
+<div class="content">
+
+<!-- ═══════════════════ CALCULATOR ═══════════════════ -->
+<div id="panel-calc" class="panel active">
+
+  <!-- Profile -->
+  <div class="card">
+    <div class="card-title">Member Profile</div>
+    <div class="row">
+      <div class="field">
+        <label>Sex</label>
+        <div class="toggle-group">
+          <button class="toggle-btn active" onclick="setSex('male',this)">Male</button>
+          <button class="toggle-btn" onclick="setSex('female',this)">Female</button>
+        </div>
+      </div>
+      <div class="field sm">
+        <label>Age</label>
+        <input type="number" id="age" min="17" max="70" value="28"/>
+      </div>
+      <div class="field">
+        <label>Test Date (optional)</label>
+        <input type="date" id="testDate"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- Exemption note shown when any component is exempted -->
+  <div id="exemptNote" class="alert alert-info" style="display:none;margin-bottom:8px;">
+    ⓘ Exempted components are excluded from scoring. The composite is calculated from remaining components, redistributed proportionally.
+  </div>
+
+  <!-- Push-ups ACCORDION -->
+  <div class="acc-card" id="pu-card">
+    <div class="acc-header" onclick="toggleAcc('pu')">
+      <div class="acc-header-left">
+        <span class="acc-title">Push-ups</span>
+        <span class="acc-pts">max 15 pts</span>
+      </div>
+      <label class="acc-exempt" onclick="event.stopPropagation()">
+        <input type="checkbox" id="puExempt" onchange="toggleExempt('pu-inputs','puExempt')" style="accent-color:var(--accent);width:14px;height:14px;"/>
+        Exempt
+      </label>
+      <span class="acc-score-pill" id="acc-pill-pu">—</span>
+      <span class="acc-tap-hint" id="acc-hint-pu">tap to expand</span><span class="acc-chevron" id="acc-chev-pu">▼</span>
+    </div>
+    <div class="acc-body" id="acc-body-pu" style="display:none;">
+      <div id="pu-inputs">
+        <div class="row">
+          <div class="field">
+            <label>Type</label>
+            <div class="toggle-group">
+              <button class="toggle-btn active" onclick="setPuType('standard',this)">Standard (1 min)</button>
+              <button class="toggle-btn" onclick="setPuType('hr',this)">Hand Release (2 min)</button>
+            </div>
+          </div>
+          <div class="field sm">
+            <label>Reps</label>
+            <input type="number" id="puReps" min="0" max="150" placeholder="0"/>
+          </div>
+        </div>
+        <div id="pu-timer-row" style="display:block;margin-top:10px;">
+          <button id="pu-timer-btn" onclick="startCountdown(60,'Push-ups')" class="calc-timer-btn">⏱ Start 1:00 Timer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Core ACCORDION -->
+  <div class="acc-card" id="core-card">
+    <div class="acc-header" onclick="toggleAcc('core')">
+      <div class="acc-header-left">
+        <span class="acc-title">Core</span>
+        <span class="acc-pts">max 15 pts</span>
+      </div>
+      <label class="acc-exempt" onclick="event.stopPropagation()">
+        <input type="checkbox" id="coreExempt" onchange="toggleExempt('core-inputs','coreExempt')" style="accent-color:var(--accent);width:14px;height:14px;"/>
+        Exempt
+      </label>
+      <span class="acc-score-pill" id="acc-pill-core">—</span>
+      <span class="acc-tap-hint" id="acc-hint-core">tap to expand</span><span class="acc-chevron" id="acc-chev-core">▼</span>
+    </div>
+    <div class="acc-body" id="acc-body-core" style="display:none;">
+      <div id="core-inputs">
+        <div class="row">
+          <div class="field">
+            <label>Type</label>
+            <div class="toggle-group">
+              <button class="toggle-btn active" onclick="setCoreType('situp',this)">Sit-ups (1 min)</button>
+              <button class="toggle-btn" onclick="setCoreType('clrc',this)">Cross Leg RC (2 min)</button>
+              <button class="toggle-btn" onclick="setCoreType('plank',this)">Forearm Plank</button>
+            </div>
+          </div>
+          <div class="field sm" id="core-reps-field">
+            <label>Reps</label>
+            <input type="number" id="coreReps" min="0" max="150" placeholder="0"/>
+          </div>
+          <div id="plank-time-row" style="display:none;gap:8px;flex:1;">
+            <div class="field sm" id="core-min-field" style="flex:1;">
+              <label>Min</label>
+              <input type="number" id="plankMin" min="0" max="10" placeholder="0"/>
+            </div>
+            <div class="field sm" id="core-sec-field" style="flex:1;">
+              <label>Sec</label>
+              <input type="number" id="plankSec" min="0" max="59" placeholder="00"/>
+            </div>
+          </div>
+        </div>
+        <div id="core-timer-row" style="display:none;margin-top:10px;">
+          <button id="core-timer-btn" class="calc-timer-btn">⏱ Start Timer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cardio ACCORDION -->
+  <div class="acc-card" id="cardio-card">
+    <div class="acc-header" onclick="toggleAcc('cardio')">
+      <div class="acc-header-left">
+        <span class="acc-title">Cardio</span>
+        <span class="acc-pts">max 50 pts</span>
+      </div>
+      <label class="acc-exempt" onclick="event.stopPropagation()">
+        <input type="checkbox" id="cardioExempt" onchange="toggleExempt('cardio-inputs','cardioExempt')" style="accent-color:var(--accent);width:14px;height:14px;"/>
+        Exempt
+      </label>
+      <span class="acc-score-pill" id="acc-pill-cardio">—</span>
+      <span class="acc-tap-hint" id="acc-hint-cardio">tap to expand</span><span class="acc-chevron" id="acc-chev-cardio">▼</span>
+    </div>
+    <div class="acc-body" id="acc-body-cardio" style="display:none;">
+      <div id="cardio-inputs">
+        <div class="row">
+          <div class="field">
+            <label>Type</label>
+            <div class="toggle-group">
+              <button class="toggle-btn active" onclick="setCardioType('run',this)">2-Mile Run</button>
+              <button class="toggle-btn" onclick="setCardioType('hamr',this)">HAMR Shuttle</button>
+            </div>
+          </div>
+          <div class="field sm" id="hamr-field" style="display:none;">
+            <label>Shuttles</label>
+            <input type="number" id="hamrShuttles" min="0" max="200" placeholder="0"/>
+          </div>
+        </div>
+        <div id="hamr-player-row" style="display:none;margin-top:10px;">
+          <div style="background:#0f1318;border:1px solid #2a3540;border-radius:8px;padding:12px 14px;">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:8px;">HAMR Audio — Official 20m Beep Test</div>
+            <audio id="hamr-audio" controls preload="none"
+              src="https://raw.githubusercontent.com/SeanHSimpson/pt-ready/main/Air%20Force%2020m%20HAMR%20Audio%20File.mp3"
+              style="width:100%;height:36px;accent-color:var(--accent);">
+              Your browser does not support audio.
+            </audio>
+            <div style="font-size:11px;color:#445;margin-top:6px;">Enter your shuttle count above after stopping.</div>
+          </div>
+        </div>
+
+        <div id="run-time-row" style="display:flex;gap:12px;margin-top:4px;">
+          <div class="field sm" id="run-min-field" style="flex:1;">
+            <label>Minutes</label>
+            <input type="number" id="runMin" min="0" max="40" placeholder="00"/>
+          </div>
+          <div class="field sm" id="run-sec-field" style="flex:1;">
+            <label>Seconds</label>
+            <input type="number" id="runSec" min="0" max="59" placeholder="00"/>
+          </div>
+        </div>
+        <div id="run-timer-row" style="margin-top:10px;">
+          <button onclick="startStopwatch('2-Mile Run','run')" class="calc-timer-btn">⏱ Start Run Timer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WHtR ACCORDION -->
+  <div class="acc-card" id="whtr-card">
+    <div class="acc-header" onclick="toggleAcc('whtr')">
+      <div class="acc-header-left">
+        <span class="acc-title">Body Comp — WHtR</span>
+        <span class="acc-pts">max 20 pts</span>
+      </div>
+      <label class="acc-exempt" onclick="event.stopPropagation()">
+        <input type="checkbox" id="whtrExempt" onchange="toggleExempt('whtr-inputs','whtrExempt')" style="accent-color:var(--accent);width:14px;height:14px;"/>
+        Exempt
+      </label>
+      <span class="acc-score-pill" id="acc-pill-whtr">—</span>
+      <span class="acc-tap-hint" id="acc-hint-whtr">tap to expand</span><span class="acc-chevron" id="acc-chev-whtr">▼</span>
+    </div>
+    <div class="acc-body" id="acc-body-whtr" style="display:none;">
+      <div id="whtr-inputs">
+        <div class="row">
+          <div class="field">
+            <label>Waist (inches)</label>
+            <input type="number" id="waist" min="20" max="80" step="0.5" placeholder="e.g. 32.0"/>
+          </div>
+          <div class="field">
+            <label>Height (inches)</label>
+            <input type="number" id="height" min="48" max="96" step="0.5" placeholder="e.g. 70.0"/>
+          </div>
+          <div class="field">
+            <label>WHtR</label>
+            <input type="text" id="whtrDisplay" readonly placeholder="Auto-calculated"/>
+          </div>
+        </div>
+        <div id="whtr-risk" style="display:none;margin-top:4px;font-size:12px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:12px;flex-wrap:wrap;">
+    <button class="btn btn-primary" onclick="calculate()">▶ Calculate Score</button>
+    <button class="btn btn-secondary" onclick="clearForm()">Clear</button>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results" style="display:none;margin-top:24px;">
+    <div id="result-banner" class="result-banner">
+      <div>
+        <div class="grade" id="res-total"></div>
+        <div style="font-size:11px;letter-spacing:1px;opacity:.7;margin-top:2px;">composite score / 100</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="grade-label" id="res-category"></div>
+        <div style="font-size:11px;margin-top:4px;opacity:.7;" id="res-days"></div>
+        <div id="score-badge" style="margin-top:8px;font-size:28px;line-height:1;" title=""></div>
+      </div>
+    </div>
+    <div id="min-fail-msg" class="min-fail" style="display:none;"></div>
+
+    <div class="score-grid">
+      <div class="score-box" id="box-pu">
+        <div class="score-num" id="res-pu">—</div>
+        <div class="score-label" id="res-pu-label">Push-ups</div>
+        <div class="score-sub" id="res-pu-detail"></div>
+      </div>
+      <div class="score-box" id="box-core">
+        <div class="score-num" id="res-core">—</div>
+        <div class="score-label" id="res-core-label">Core</div>
+        <div class="score-sub" id="res-core-detail"></div>
+      </div>
+      <div class="score-box cardio" id="box-cardio">
+        <div class="score-num" id="res-cardio">—</div>
+        <div class="score-label" id="res-cardio-label">Cardio</div>
+        <div class="score-sub" id="res-cardio-detail"></div>
+      </div>
+      <div class="score-box whtr" id="box-whtr">
+        <div class="score-num" id="res-whtr">—</div>
+        <div class="score-label" id="res-whtr-label">WHtR</div>
+        <div class="score-sub" id="res-whtr-detail"></div>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;padding:10px 14px;background:rgba(232,160,32,0.06);border:1px solid rgba(232,160,32,0.2);border-radius:6px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#778;">Official Score Charts</span>
+      <a href="https://www.afpc.af.mil/Portals/70/documents/FITNESS/PFRA%20Scoring%20Charts.pdf" target="_blank" rel="noopener" style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent);text-decoration:none;white-space:nowrap;">View PDF ↗</a>
+    </div>
+
+    <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;">
+      <button class="btn btn-green" onclick="saveScore()">💾 Save to History</button>
+      <button class="btn btn-secondary" onclick="window.print()">🖨 Print Score Sheet</button>
+      <button class="btn btn-secondary" onclick="switchTab('ai',document.querySelector('.tab:nth-child(2)'))">→ Generate AI Plan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ AI WORKOUT PLAN ═══════════════════ -->
+<div id="panel-ai" class="panel">
+
+  <div id="ai-no-score" class="alert alert-warn" style="margin-bottom:12px;">&#9888; No score calculated yet &mdash; go to the Calculator tab, enter your results, and press Calculate Score.</div>
+
+  <!-- Test Date — always visible -->
+  <div class="card" style="margin-bottom:10px;">
+    <div class="card-title">Official PT Test Date</div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+      <div class="field" style="flex:1;min-width:160px;margin-bottom:0;">
+        <input type="date" id="aiTestDate" onchange="updateAITestDate()"/>
+      </div>
+      <div id="ai-days-until" style="font-size:14px;color:var(--accent);font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:1px;white-space:nowrap;"></div>
+    </div>
+  </div>
+
+  <!-- Plan Preferences ACCORDION -->
+  <div class="acc-card" style="margin-bottom:10px;">
+    <div class="acc-header" onclick="toggleAcc('ai-prefs')">
+      <div class="acc-header-left">
+        <span class="acc-title">Plan Preferences</span>
+        <span class="acc-pts">optional</span>
+      </div>
+      <span class="acc-tap-hint" id="acc-hint-ai-prefs">tap to expand</span><span class="acc-chevron" id="acc-chev-ai-prefs">▼</span>
+    </div>
+    <div class="acc-body" id="acc-body-ai-prefs" style="display:none;">
+      <div class="row">
+        <div class="field">
+          <label>Focus Area</label>
+          <select id="aiFocus">
+            <option value="balanced">Balanced (all components)</option>
+            <option value="cardio">Cardio heavy</option>
+            <option value="strength">Strength heavy</option>
+            <option value="body">Body composition</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Fitness Level</label>
+          <select id="aiLevel">
+            <option value="beginner">Beginner</option>
+            <option value="intermediate" selected>Intermediate</option>
+            <option value="advanced">Advanced</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Days per week</label>
+          <select id="aiDays">
+            <option value="3">3 days/week</option>
+            <option value="4">4 days/week</option>
+            <option value="5" selected>5 days/week</option>
+            <option value="6">6 days/week</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Injuries or limitations?</label>
+        <input type="text" id="aiInjuries" placeholder="e.g. knee pain, lower back (leave blank if none)"/>
+      </div>
+      <div class="field">
+        <label>Equipment available</label>
+        <div class="toggle-group">
+          <button class="toggle-btn active" id="equip-bw" onclick="setEquipment('bodyweight',this)">Bodyweight Only</button>
+          <button class="toggle-btn" id="equip-gym" onclick="setEquipment('gym',this)">Gym + Bodyweight</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generate button -->
+  <button class="btn btn-primary" id="genBtn" onclick="generatePlan()" style="width:100%;font-size:15px;padding:14px 28px;margin-bottom:12px;">
+    &#9889; Generate My Workout Plan
+  </button>
+
+  <!-- Warfighter playbook note — below button -->
+  <div style="text-align:center;margin-bottom:16px;">
+    <span style="font-size:11px;color:var(--muted);">Plans follow the </span>
+    <a href="https://www.afpc.af.mil/Portals/70/documents/FITNESS/Tab%204.%20The%20Warfighter's%20Fitness%20Playbook%20%202.0%20Feb%202026.pdf" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);font-weight:600;text-decoration:none;">Warfighter's Fitness Playbook 2.0 ↗</a>
+    <span style="font-size:11px;color:var(--muted);"> · PFRA 1 Mar 2026 · v1.2</span>
+  </div>
+
+  <!-- API Key — only shown on error -->
+  <div id="ai-key-box" style="display:none;margin-bottom:12px;">
+    <div class="card" style="border-color:var(--orange);background:linear-gradient(135deg,#0f1318 0%,#1a0a00 100%);">
+      <div style="font-size:12px;color:var(--orange);margin-bottom:10px;">⚠ Plan failed to generate. If this keeps happening, provide your own free Groq API key below.</div>
+      <input type="password" id="geminiKey" placeholder="Paste Groq API key (gsk_...)" style="margin-bottom:8px;font-family:monospace;font-size:13px;"/>
+      <div style="font-size:11px;color:var(--muted);line-height:1.6;">Get a free key at <a href="https://console.groq.com" target="_blank" rel="noopener" style="color:var(--accent);">console.groq.com</a> · Model: Llama 3.3 70B · No data stored</div>
+    </div>
+  </div>
+
+  <div id="ai-error" class="alert alert-error" style="display:none;margin-bottom:16px;"></div>
+
+  <!-- Result card -->
+  <div id="ai-result" style="display:none;">
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <span id="ai-result-title">Generating Plan...</span>
+        <span id="ai-parse-status" style="font-size:11px;color:var(--muted);"></span>
+      </div>
+      <div id="ai-output" style="font-size:12px;line-height:1.8;white-space:pre-wrap;color:var(--muted);max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:3px;padding:10px;background:var(--bg);display:none;"></div>
+      <div id="ai-plan-ready" style="display:none;margin-top:12px;">
+        <div style="font-size:13px;color:var(--green);margin-bottom:12px;">&#10003; Plan parsed successfully — <span id="ai-plan-summary"></span></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="activatePlan()" style="font-size:14px;padding:11px 22px;">&#9654; Load Plan into Workout Log</button>
+          <button class="btn btn-secondary" onclick="document.getElementById('ai-output').style.display=document.getElementById('ai-output').style.display==='none'?'block':'none'" style="font-size:11px;">&#128065; Raw Output</button>
+
+        </div>
+      </div>
+      <div id="ai-parse-error" style="display:none;margin-top:12px;">
+        <div style="font-size:13px;color:var(--orange);margin-bottom:10px;" id="ai-parse-error-msg"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-secondary" onclick="document.getElementById('ai-output').style.display='block'" style="font-size:11px;">&#128065; View Raw Output</button>
+          <button class="btn btn-secondary" onclick="downloadPlan()" style="font-size:11px;">&#8595; Download .txt</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+</div>
+
+<!-- ═══════════════════ WORKOUT LOG ═══════════════════ -->
+<div id="panel-log" class="panel">
+
+  <!-- MY PLAN SECTION -->
+  <div id="my-plan-section" style="display:none;">
+    <div class="card" style="border-color:var(--accent);">
+      <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <span>&#9776; My Training Plan</span>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <select id="plan-week-select" onchange="onWeekChange()" style="font-size:12px;padding:5px 10px;border:1px solid var(--border2);background:var(--bg);color:var(--text);border-radius:3px;min-width:100px;"></select>
+          <select id="plan-day-select" onchange="onDayChange()" style="font-size:12px;padding:5px 10px;border:1px solid var(--border2);background:var(--bg);color:var(--text);border-radius:3px;min-width:140px;"></select>
+          <button class="btn btn-secondary" onclick="clearActivePlan()" style="font-size:10px;padding:4px 10px;">&#10005; Clear</button>
+        </div>
+      </div>
+
+      <!-- Day header -->
+      <div id="plan-day-header" style="margin-bottom:12px;"></div>
+
+      <!-- Exercise checklist -->
+      <div id="plan-exercise-list"></div>
+
+      <!-- Progress bar -->
+      <div style="margin-top:14px;">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;">
+          <span>Today's progress</span>
+          <span id="plan-progress-text">0 / 0 complete</span>
+        </div>
+        <div style="height:4px;background:var(--border2);border-radius:2px;overflow:hidden;">
+          <div id="plan-progress-bar" style="height:100%;width:0%;background:var(--green);border-radius:2px;transition:width .3s;"></div>
+        </div>
+      </div>
+
+      <!-- Log button -->
+      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-green" id="log-day-btn" onclick="logPlanDay()" style="font-size:13px;padding:10px 20px;">&#128203; Log This Workout</button>
+        <button class="btn btn-secondary" onclick="markDayDone()" style="font-size:11px;">&#10003; Mark Day Complete</button>
+        <button class="btn btn-secondary" onclick="downloadPlanPDF()" style="font-size:11px;">&#8595; Download PDF</button>
+      </div>
+    </div>
+
+    <!-- Plan progress overview -->
+    <div class="card">
+      <div class="card-title">Plan Progress</div>
+      <div id="plan-overview" style="font-size:12px;line-height:1.9;color:var(--muted);"></div>
+    </div>
+  </div>
+
+  <div id="no-plan-msg" class="alert alert-info" style="display:none;">
+    &#9888; No active plan. Go to the <strong>AI Workout Plan</strong> tab, generate a plan, then tap <strong>Load Plan into Workout Log</strong>.
+  </div>
+
+  <!-- Hidden log fields used by logPlanDay() -->
+  <input type="hidden" id="logDate"/>
+  <input type="hidden" id="logType"/>
+  <input type="hidden" id="logReps"/>
+  <input type="hidden" id="logTime"/>
+  <input type="hidden" id="logNotes"/>
+
+  <!-- Previous Workouts Viewer -->
+  <div class="card">
+    <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <span id="log-title">Previous Workouts (0 entries)</span>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <select id="logFilter" onchange="renderLogs()" style="font-size:11px;padding:4px 8px;border:1px solid var(--border2);background:var(--bg);color:var(--text);border-radius:3px;">
+          <option value="all">All types</option>
+          <option value="Standard Push-ups">Standard Push-ups</option>
+          <option value="Hand Release Push-ups">Hand Release Push-ups</option>
+          <option value="Sit-ups">Sit-ups</option>
+          <option value="Cross Leg Reverse Crunch">Cross Leg Reverse Crunch</option>
+          <option value="Forearm Plank">Forearm Plank</option>
+          <option value="2-Mile Run">2-Mile Run</option>
+          <option value="HAMR Shuttle Run">HAMR Shuttle Run</option>
+          <option value="Easy Run / Recovery">Easy Run / Recovery</option>
+          <option value="Interval Training">Interval Training</option>
+          <option value="Strength Training">Strength Training</option>
+        </select>
+        <select id="logDateFilter" onchange="renderLogs()" style="font-size:11px;padding:4px 8px;border:1px solid var(--border2);background:var(--bg);color:var(--text);border-radius:3px;">
+          <option value="all">All time</option>
+          <option value="7">Last 7 days</option>
+          <option value="30">Last 30 days</option>
+          <option value="90">Last 90 days</option>
+        </select>
+        <button class="btn btn-secondary" onclick="exportLogs()" style="font-size:10px;padding:4px 10px;">↓ CSV</button>
+      </div>
+    </div>
+    <div id="log-stats" style="display:none;margin-bottom:12px;padding:10px;background:var(--bg);border-radius:3px;border:1px solid var(--border);font-size:12px;color:var(--muted);"></div>
+    <div id="log-list"><p style="color:var(--muted);font-size:13px;">No workouts logged yet.</p></div>
+    <div id="log-load-more" style="display:none;text-align:center;margin-top:12px;">
+      <button class="btn btn-secondary" onclick="loadMoreLogs()" style="font-size:11px;">Load more</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ SCORE HISTORY ═══════════════════ -->
+<div id="panel-history" class="panel">
+  <div class="card">
+    <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <span>Score History</span>
+      <button class="btn btn-secondary" onclick="exportHistory()" style="font-size:10px;padding:5px 12px;">↓ Export CSV</button>
+    </div>
+    <div id="history-chart-wrap" class="chart-wrap" style="display:none;">
+      <canvas id="histChart"></canvas>
+    </div>
+    <div id="history-list"><p style="color:var(--muted);font-size:13px;">No scores saved yet. Calculate and save a score to track progress.</p></div>
+  </div>
+
+  <div class="card" id="history-stats" style="display:none;">
+    <div class="card-title">Statistics</div>
+    <div class="score-grid" id="stat-grid"></div>
+  </div>
+</div>
+
+</div><!-- /content -->
+
+<script src="./js/storage.js" defer></script>
+<script src="./js/scoring.js" defer></script>
+<script src="./js/pwa.js" defer></script>
+<script src="./js/app.js" defer></script>
+<!-- DISCLAIMER FOOTER -->
+<div style="background:#060810;border-top:1px solid #1a2030;padding:12px 20px;padding-bottom:calc(80px + env(safe-area-inset-bottom));text-align:center;">
+
+  <p style="font-size:10px;color:#3a4a5a;line-height:1.6;margin:0;max-width:960px;margin:0 auto;">
+    ⚠️ Unofficial tool — not affiliated with or endorsed by the USAF, DAF, or DoD. Based on publicly available AF fitness documents. For official guidance consult your UFPM or DAFMAN 36-2905.
+  </p>
+</div>
+
+<!-- ═══ STOPWATCH MODAL ═══ -->
+<div class="sw-modal" id="sw-modal">
+  <div class="sw-label" id="sw-label">TIMER</div>
+  <div class="sw-display" id="sw-display">0:00</div>
+  <div style="font-size:12px;color:#445;min-height:16px;" id="sw-split"></div>
+  <div class="sw-btn-row">
+    <button class="sw-btn sw-btn-start" id="sw-start-btn" onclick="swToggle()">▶ START</button>
+    <button class="sw-btn sw-btn-sec" onclick="swReset()">↺ RESET</button>
+    <button class="sw-btn sw-btn-sec" onclick="swClose()">✕ CLOSE</button>
+  </div>
+  <button class="sw-record" id="sw-record-btn" onclick="swRecord()">✓ Record Score</button>
+</div>
+
+<!-- ═══ FLOATING FEEDBACK BUTTON ═══ -->
+<button id="fb-fab" onclick="openFeedback()" title="Send Feedback"
+  style="position:fixed;bottom:76px;right:16px;z-index:500;
+    height:36px;padding:0 14px;border-radius:18px;
+    background:var(--accent);border:none;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    box-shadow:0 4px 16px rgba(232,160,32,0.35);
+    font-family:'Barlow Condensed',sans-serif;font-weight:700;
+    font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:#000;
+    transition:transform .15s,box-shadow .15s;"
+  onmouseenter="this.style.transform='scale(1.05)'"
+  onmouseleave="this.style.transform='scale(1)'">
+  <span style="font-size:14px;line-height:1;">💬</span> Feedback
+</button>
+
+<!-- ═══ FEEDBACK SHEET MODAL ═══ -->
+<div id="fb-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.6);align-items:flex-end;justify-content:center;"
+  onclick="if(event.target===this)closeFeedback()">
+  <div style="background:#131920;border:1px solid #2a3540;border-radius:12px 12px 0 0;
+    width:100%;max-width:480px;padding:24px 20px 32px;max-height:90vh;overflow-y:auto;">
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:16px;letter-spacing:2px;text-transform:uppercase;color:#fff;">Send Feedback</div>
+        <div style="font-size:11px;color:#556;margin-top:2px;">Only the developer sees this</div>
+      </div>
+      <button onclick="closeFeedback()" style="background:none;border:none;color:#556;font-size:20px;cursor:pointer;padding:4px 8px;line-height:1;">✕</button>
+    </div>
+
+    <!-- Type -->
+    <div style="margin-bottom:10px;">
+      <select id="fb-type" onchange="fbTypeChanged(this.value)"
+        style="width:100%;background:#0f1318;border:1px solid #2a3540;border-radius:6px;
+          color:#ccc;font-family:'Barlow Condensed',sans-serif;font-size:13px;
+          letter-spacing:1px;padding:10px 12px;appearance:none;-webkit-appearance:none;">
+        <option value="">— Select type —</option>
+        <option value="Bug Report">Bug Report</option>
+        <option value="Suggestion">Suggestion</option>
+        <option value="General Feedback">General Feedback</option>
+      </select>
+    </div>
+
+    <!-- Score Discrepancy toggle — visible only for Bug Report -->
+    <div id="fb-discrepancy-row" style="display:none;margin-bottom:10px;
+      background:#0f1318;border:1px solid rgba(232,160,32,0.25);border-radius:6px;padding:10px 12px;">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+        <input type="checkbox" id="fb-is-discrepancy" onchange="fbDiscrepancyChanged(this.checked)"
+          style="accent-color:var(--accent);width:16px;height:16px;cursor:pointer;flex-shrink:0;">
+        <span style="font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:1px;
+          text-transform:uppercase;color:var(--accent);">Score Discrepancy</span>
+      </label>
+    </div>
+
+    <!-- Discrepancy detail fields — visible only when checkbox checked -->
+    <div id="fb-discrepancy-fields" style="display:none;margin-bottom:10px;
+      background:#0f1318;border:1px solid #2a3540;border-radius:6px;padding:12px;">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;letter-spacing:2px;
+        text-transform:uppercase;color:#556;margin-bottom:10px;">Discrepancy Details</div>
+
+      <!-- Sex -->
+      <div style="margin-bottom:10px;">
+        <div style="font-size:11px;color:#667;margin-bottom:6px;">Sex</div>
+        <div style="display:flex;gap:8px;">
+          <button id="fb-sex-m" onclick="fbSetSex('Male')"
+            style="flex:1;padding:8px;background:rgba(255,255,255,0.05);border:1px solid #2a3540;
+              border-radius:5px;color:#aaa;font-family:'Barlow Condensed',sans-serif;
+              font-size:12px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;">Male</button>
+          <button id="fb-sex-f" onclick="fbSetSex('Female')"
+            style="flex:1;padding:8px;background:rgba(255,255,255,0.05);border:1px solid #2a3540;
+              border-radius:5px;color:#aaa;font-family:'Barlow Condensed',sans-serif;
+              font-size:12px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;">Female</button>
+        </div>
+        <input type="hidden" id="fb-sex-val" value="">
+      </div>
+
+      <!-- Age -->
+      <div style="margin-bottom:10px;">
+        <div style="font-size:11px;color:#667;margin-bottom:4px;">Age</div>
+        <input type="number" id="fb-age" min="17" max="65" placeholder="e.g. 28"
+          style="width:100%;background:#131920;border:1px solid #2a3540;border-radius:5px;
+            color:#ccc;font-family:'Barlow',sans-serif;font-size:13px;padding:8px 10px;">
+      </div>
+
+      <!-- Components -->
+      <div>
+        <div style="font-size:11px;color:#667;margin-bottom:4px;">Component(s) Affected</div>
+        <input type="text" id="fb-components" placeholder="e.g. Push-ups, Cardio"
+          style="width:100%;background:#131920;border:1px solid #2a3540;border-radius:5px;
+            color:#ccc;font-family:'Barlow',sans-serif;font-size:13px;padding:8px 10px;">
+      </div>
+    </div>
+
+    <!-- Message -->
+    <div style="margin-bottom:10px;">
+      <textarea id="fb-message" placeholder="Describe the issue or suggestion..." rows="3"
+        style="width:100%;background:#0f1318;border:1px solid #2a3540;border-radius:6px;
+          color:#ccc;font-family:'Barlow',sans-serif;font-size:13px;
+          padding:10px 12px;resize:none;line-height:1.5;"></textarea>
+    </div>
+
+    <!-- Request Response -->
+    <div style="margin-bottom:10px;background:#0f1318;border:1px solid #2a3540;border-radius:6px;padding:10px 12px;">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+        <input type="checkbox" id="fb-wants-response" onchange="fbResponseChanged(this.checked)"
+          style="accent-color:var(--accent);width:16px;height:16px;cursor:pointer;flex-shrink:0;">
+        <span style="font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:1px;
+          text-transform:uppercase;color:#ccc;">Request follow-up when resolved</span>
+      </label>
+      <div id="fb-email-row" style="display:none;margin-top:10px;">
+        <input type="email" id="fb-email" placeholder="your@email.com"
+          style="width:100%;background:#131920;border:1px solid #2a3540;border-radius:5px;
+            color:#ccc;font-family:'Barlow',sans-serif;font-size:13px;padding:8px 10px;">
+        <div style="font-size:10px;color:#445;margin-top:5px;">Only used to follow up on this report — never shared.</div>
+      </div>
+    </div>
+
+    <div style="font-size:11px;color:#445;margin-bottom:12px;">
+      Screen: <span id="fb-screen-label" style="color:#667;"></span>
+    </div>
+
+    <button onclick="submitFeedback()"
+      style="width:100%;padding:13px;background:var(--accent);border:none;border-radius:6px;
+        color:#000;font-family:'Barlow Condensed',sans-serif;font-weight:900;
+        font-size:14px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;">
+      📨 Submit
+    </button>
+    <div id="fb-status" style="margin-top:10px;font-size:12px;text-align:center;min-height:16px;color:#778;"></div>
+  </div>
+</div>
+
+</body>
+</html>
