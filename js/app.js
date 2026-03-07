@@ -144,9 +144,7 @@ document.getElementById('height').addEventListener('input', calcWHtR);
 document.getElementById('age')?.addEventListener('input', () => {
   ['pu','core','cardio','whtr'].forEach(c => liveScoreComponent(c));
 });
-document.querySelectorAll('input[name="sex"]').forEach(r => r.addEventListener('change', () => {
-  ['pu','core','cardio','whtr'].forEach(c => liveScoreComponent(c));
-}));
+
 function calcWHtR() {
   const w = parseFloat(document.getElementById('waist').value);
   const h = parseFloat(document.getElementById('height').value);
@@ -168,133 +166,77 @@ function calcWHtR() {
 // ── LIVE COMPONENT SCORING ────────────────────────────────────────────────────
 // Updates a single accordion pill without running the full calculate()
 function liveScoreComponent(component) {
-  const age = +document.getElementById('age').value;
+  const age = document.getElementById('age').value;
+  const ag  = getAG(age);
   const currentSex = sex;
-  const pill = document.getElementById(`score-${component}`);
-  if (!pill) return;
+  if(!ag) return;
 
-  let pts = 0;
-
-  if (!age || !currentSex) {
-    pill.textContent = '-- pts';
-    return;
-  }
-
-  if (component === 'pu') {
-    const reps = +document.getElementById('puInput').value;
+  if(component === 'pu') {
+    const exempt = document.getElementById('puExempt').checked;
+    if(exempt) return;
+    const reps  = parseInt(document.getElementById('puReps').value) || 0;
     const table = puType === 'standard'
       ? (currentSex === 'male' ? PU_STD_M : PU_STD_F)
       : (currentSex === 'male' ? PU_HR_M : PU_HR_F);
-
-    pts = table ? scoreReps(table, age, reps) : 0;
+    const score = lookupHigh(table, ag, reps);
+    updateAccPill('pu', score, false);
   }
 
-  if (component === 'core') {
-    if (coreType === 'plank') {
-      const secs = parseMMSS(document.getElementById('coreInput').value);
+  if(component === 'core') {
+    const exempt = document.getElementById('coreExempt').checked;
+    if(exempt) return;
+    let score = 0;
+    if(coreType === 'plank') {
+      const secs  = parsePlankTime(
+        document.getElementById('plankMin').value,
+        document.getElementById('plankSec').value
+      );
       const table = currentSex === 'male' ? PLANK_M : PLANK_F;
-      pts = table ? scoreTime(table, age, secs) : 0;
-    } else if (coreType === 'situp') {
-      const reps = +document.getElementById('coreInput').value;
-      const table = currentSex === 'male' ? SITUP_M : SITUP_F;
-      pts = table ? scoreReps(table, age, reps) : 0;
+      score = lookupHigh(table, ag, secs);
     } else {
-      const secs = parseMMSS(document.getElementById('coreInput').value);
-      const table = currentSex === 'male' ? CLRC_M : CLRC_F;
-      pts = table ? scoreTime(table, age, secs) : 0;
+      const reps  = parseInt(document.getElementById('coreReps').value) || 0;
+      const table = coreType === 'situp'
+        ? (currentSex === 'male' ? SITUP_M : SITUP_F)
+        : (currentSex === 'male' ? CLRC_M : CLRC_F);
+      score = lookupHigh(table, ag, reps);
     }
+    updateAccPill('core', score, false);
   }
 
-  if (component === 'cardio') {
-    if (cardioType === 'run') {
-      const secs = parseMMSS(document.getElementById('cardioInput').value);
+  if(component === 'cardio') {
+    const exempt = document.getElementById('cardioExempt').checked;
+    if(exempt) return;
+    let score = 0;
+    if(cardioType === 'run') {
+      const secs  = parseRunTime(
+        document.getElementById('runMin').value,
+        document.getElementById('runSec').value
+      );
       const table = currentSex === 'male' ? RUN_M : RUN_F;
-      pts = table ? scoreTime(table, age, secs) : 0;
-    } else {
-      const reps = +document.getElementById('cardioInput').value;
-      const table = currentSex === 'male' ? HAMR_M : HAMR_F;
-      pts = table ? scoreReps(table, age, reps) : 0;
-    }
-  }
-
-  if (component === 'whtr') {
-    const ratio = parseFloat(document.getElementById('whtrInput').value);
-    const table = currentSex === 'male' ? WHTR_M : WHTR_F;
-    pts = table ? scoreWHTR(table, age, ratio) : 0;
-  }
-
-  pill.textContent = `${pts} pts`;
-}
-
-function calculate() {
-  if(navigator.vibrate) navigator.vibrate(40);
-  const age = document.getElementById('age').value;
-  const ag = getAG(age);
-  const testDate = document.getElementById('testDate').value;
-
-  const puEx = document.getElementById('puExempt').checked;
-  const coreEx = document.getElementById('coreExempt').checked;
-  const cardioEx = document.getElementById('cardioExempt').checked;
-  const whtrEx = document.getElementById('whtrExempt').checked;
-
-  // Push-up score
-  let puScore = 0, puDetail = '', puMin = 0, puFail = false;
-  if (!puEx) {
-    const reps = parseInt(document.getElementById('puReps').value) || 0;
-    const table = puType === 'standard' ? (sex==='male' ? PU_STD_M : PU_STD_F) : (sex==='male' ? PU_HR_M : PU_HR_F);
-    puScore = lookupHigh(table, ag, reps);
-    puDetail = `${reps} reps`;
-    const minEntry = table[ag] ? table[ag][table[ag].length-1] : null;
-    puMin = minEntry ? minEntry[1] : 7.5;
-    puFail = puScore < puMin && puScore > 0 || reps === 0;
-  }
-
-  // Core score
-  let coreScore = 0, coreDetail = '', coreFail = false;
-  if (!coreEx) {
-    if (coreType === 'plank') {
-      const secs = parsePlankTime(document.getElementById('plankMin').value, document.getElementById('plankSec').value);
-      const table = sex==='male' ? PLANK_M : PLANK_F;
-      coreScore = lookupHigh(table, ag, secs);
-      coreDetail = toMMSS(secs);
-    } else {
-      const reps = parseInt(document.getElementById('coreReps').value) || 0;
-      const table = coreType === 'situp' ? (sex==='male' ? SITUP_M : SITUP_F) : (sex==='male' ? CLRC_M : CLRC_F);
-      coreScore = lookupHigh(table, ag, reps);
-      coreDetail = `${reps} reps`;
-    }
-  }
-
-  // Cardio score
-  let cardioScore = 0, cardioDetail = '', cardioFail = false;
-  if (!cardioEx) {
-    if (cardioType === 'run') {
-      const secs = parseRunTime(document.getElementById('runMin').value, document.getElementById('runSec').value);
-      const table = sex==='male' ? RUN_M : RUN_F;
-      cardioScore = secs > 0 ? lookupLow(table, ag, secs) : 0;
-      cardioDetail = secs > 0 ? toMMSS(secs) : '—';
-      cardioFail = cardioScore < 29.5 && secs > 0;
+      score = secs > 0 ? lookupLow(table, ag, secs) : 0;
     } else {
       const shuttles = parseInt(document.getElementById('hamrShuttles').value) || 0;
-      const table = sex==='male' ? HAMR_M : HAMR_F;
-      cardioScore = shuttles > 0 ? lookupHigh(table, ag, shuttles) : 0;
-      cardioDetail = `${shuttles} shuttles`;
-      cardioFail = cardioScore < 29.5 && shuttles > 0;
+      const table = currentSex === 'male' ? HAMR_M : HAMR_F;
+      score = shuttles > 0 ? lookupHigh(table, ag, shuttles) : 0;
     }
+    updateAccPill('cardio', score, false);
   }
 
-  // WHtR score
-  let whtrScore = 0, whtrDetail = '';
-  if (!whtrEx) {
+  if(component === 'whtr') {
+    const exempt = document.getElementById('whtrExempt').checked;
+    if(exempt) return;
     const w = parseFloat(document.getElementById('waist').value);
     const h = parseFloat(document.getElementById('height').value);
-    if (w && h) {
-      const ratio = w/h;
-      whtrScore = lookupWHtR(ratio);
-      const risk = getWhtrRiskLabel(ratio);
-      whtrDetail = `WHtR ${ratio.toFixed(3)} · ${risk.label}`;
+    if(w && h) {
+      const ratio = w / h;
+      const table = currentSex === 'male' ? WHTR_M : WHTR_F;
+      const score = lookupLow(table, ag, ratio);
+      updateAccPill('whtr', score, false);
+    } else {
+      updateAccPill('whtr', null, false);
     }
   }
+}
 
   // Composite (exempted components redistribute proportionally)
   // Total possible = 15+15+50+20 = 100
