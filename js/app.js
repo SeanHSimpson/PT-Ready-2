@@ -351,7 +351,7 @@ function calculate() {
     document.getElementById('results').scrollIntoView({behavior:'smooth', block:'start'});
   }, 100);
 }
-}
+
 
 function clearForm() {
   document.getElementById('puReps').value='';
