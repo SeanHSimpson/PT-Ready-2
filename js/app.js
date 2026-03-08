@@ -162,6 +162,186 @@ function calcWHtR() {
 
 // ════════════════════════════════════════════════════════
 // CALCULATE
+function calculate() {
+  const age = parseInt(document.getElementById('age').value, 10);
+  const ag = getAG(age);
+  const testDate = document.getElementById('testDate')?.value || '';
+
+  if (!ag) {
+    alert('Please enter a valid age.');
+    return;
+  }
+
+  const puEx = document.getElementById('puExempt').checked;
+  const coreEx = document.getElementById('coreExempt').checked;
+  const cardioEx = document.getElementById('cardioExempt').checked;
+  const whtrEx = document.getElementById('whtrExempt').checked;
+
+  let puScore = 0, puDetail = 'Exempted', puMin = 7.5;
+  let coreScore = 0, coreDetail = 'Exempted';
+  let cardioScore = 0, cardioDetail = 'Exempted';
+  let whtrScore = 0, whtrDetail = 'Exempted';
+
+  // Push-ups
+  if (!puEx) {
+    const reps = parseInt(document.getElementById('puReps').value, 10) || 0;
+    const table = puType === 'standard'
+      ? (sex === 'male' ? PU_STD_M : PU_STD_F)
+      : (sex === 'male' ? PU_HR_M : PU_HR_F);
+    puScore = lookupHigh(table, ag, reps);
+    puDetail = `${reps} reps`;
+  }
+
+  // Core
+  if (!coreEx) {
+    if (coreType === 'plank') {
+      const secs = parsePlankTime(
+        document.getElementById('plankMin').value,
+        document.getElementById('plankSec').value
+      );
+      const table = sex === 'male' ? PLANK_M : PLANK_F;
+      coreScore = lookupHigh(table, ag, secs);
+      coreDetail = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+    } else {
+      const reps = parseInt(document.getElementById('coreReps').value, 10) || 0;
+      const table = coreType === 'situp'
+        ? (sex === 'male' ? SITUP_M : SITUP_F)
+        : (sex === 'male' ? CLRC_M : CLRC_F);
+      coreScore = lookupHigh(table, ag, reps);
+      coreDetail = `${reps} reps`;
+    }
+  }
+
+  // Cardio
+  if (!cardioEx) {
+    if (cardioType === 'run') {
+      const secs = parseRunTime(
+        document.getElementById('runMin').value,
+        document.getElementById('runSec').value
+      );
+      const table = sex === 'male' ? RUN_M : RUN_F;
+      cardioScore = secs > 0 ? lookupLow(table, ag, secs) : 0;
+      cardioDetail = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+    } else {
+      const shuttles = parseInt(document.getElementById('hamrShuttles').value, 10) || 0;
+      const table = sex === 'male' ? HAMR_M : HAMR_F;
+      cardioScore = shuttles > 0 ? lookupHigh(table, ag, shuttles) : 0;
+      cardioDetail = `${shuttles} shuttles`;
+    }
+  }
+
+  // WHtR
+  if (!whtrEx) {
+    const w = parseFloat(document.getElementById('waist').value);
+    const h = parseFloat(document.getElementById('height').value);
+    if (w && h) {
+      const ratio = w / h;
+      const table = sex === 'male' ? WHTR_M : WHTR_F;
+      whtrScore = lookupLow(table, ag, ratio);
+      whtrDetail = ratio.toFixed(3);
+    } else {
+      whtrScore = 0;
+      whtrDetail = 'No data';
+    }
+  }
+
+  // Composite (exempted components redistribute proportionally)
+  const compMap = [
+    { name: 'pu', score: puScore, max: 15, exempt: puEx },
+    { name: 'core', score: coreScore, max: 15, exempt: coreEx },
+    { name: 'cardio', score: cardioScore, max: 50, exempt: cardioEx },
+    { name: 'whtr', score: whtrScore, max: 20, exempt: whtrEx },
+  ];
+  const activeComps = compMap.filter(c => !c.exempt);
+  const totalMaxActive = activeComps.reduce((s, c) => s + c.max, 0);
+  const rawSum = activeComps.reduce((s, c) => s + c.score, 0);
+  const composite = totalMaxActive > 0 ? (rawSum / totalMaxActive * 100) : 0;
+
+  let cat, bannerClass;
+  if (composite >= 90) { cat = 'EXCELLENT'; bannerClass = 'excellent'; }
+  else if (composite >= 75) { cat = 'SATISFACTORY'; bannerClass = 'satisfactory'; }
+  else if (composite >= 60) { cat = 'FAIL — MARGINAL'; bannerClass = 'marginal'; }
+  else { cat = 'FAIL — UNSATISFACTORY'; bannerClass = 'unsat'; }
+
+  const fails = [];
+  if (!puEx && puScore < (puMin || 7.5) && document.getElementById('puReps').value) {
+    fails.push('Push-ups below minimum');
+  }
+  if (!cardioEx && cardioScore < 29.5 && (document.getElementById('runMin').value || document.getElementById('hamrShuttles').value)) {
+    fails.push('Cardio below minimum');
+  }
+
+  let daysMsg = '';
+  if (testDate) {
+    const days = Math.max(0, Math.round((new Date(testDate) - new Date()) / 86400000));
+    daysMsg = `${days} day${days !== 1 ? 's' : ''} until test`;
+  }
+
+  lastScore = {
+    sex, age, ag, testDate,
+    puType, puScore, puDetail, puEx,
+    coreType, coreScore, coreDetail, coreEx,
+    cardioType, cardioScore, cardioDetail, cardioEx,
+    whtrScore, whtrDetail, whtrEx,
+    composite: composite.toFixed(1), cat, fails
+  };
+
+  document.getElementById('result-banner').className = `result-banner ${bannerClass}`;
+  document.getElementById('res-total').textContent = composite.toFixed(1);
+  document.getElementById('res-category').textContent = cat;
+
+  const badgeEl = document.getElementById('score-badge');
+  if (composite >= 90) {
+    badgeEl.textContent = '🏆';
+    badgeEl.title = 'USAF Fitness Excellence — 90+';
+  } else if (composite >= 75) {
+    badgeEl.textContent = '✅';
+    badgeEl.title = 'Satisfactory — 75-89';
+  } else if (composite >= 60) {
+    badgeEl.textContent = '🦴';
+    badgeEl.title = 'Fail — Marginal (60-74)';
+  } else {
+    badgeEl.textContent = '❌';
+    badgeEl.title = 'Fail — Unsatisfactory (below 60)';
+  }
+
+  document.getElementById('res-days').textContent = daysMsg;
+
+  const setBox = (id, labelId, detailId, val, lbl, detail, ex) => {
+    document.getElementById(id).textContent = ex ? 'EXM' : (val > 0 ? val.toFixed(1) : '0.0');
+    document.getElementById(labelId).textContent = lbl;
+    document.getElementById(detailId).textContent = ex ? 'Exempted' : detail;
+  };
+
+  const puLabel = puType === 'standard' ? 'Push-ups (Std)' : 'Hand Release PU';
+  const coreLabel = coreType === 'situp' ? 'Sit-ups' : coreType === 'clrc' ? 'Cross Leg RC' : 'Forearm Plank';
+  const cardioLabel = cardioType === 'run' ? '2-Mile Run' : 'HAMR Shuttle';
+
+  setBox('res-pu', 'res-pu-label', 'res-pu-detail', puScore, puLabel, puDetail, puEx);
+  setBox('res-core', 'res-core-label', 'res-core-detail', coreScore, coreLabel, coreDetail, coreEx);
+  setBox('res-cardio', 'res-cardio-label', 'res-cardio-detail', cardioScore, cardioLabel, cardioDetail, cardioEx);
+  setBox('res-whtr', 'res-whtr-label', 'res-whtr-detail', whtrScore, 'WHtR', whtrDetail, whtrEx);
+
+  updateAccPill('pu', puScore, puEx);
+  updateAccPill('core', coreScore, coreEx);
+  updateAccPill('cardio', cardioScore, cardioEx);
+  updateAccPill('whtr', whtrScore, whtrEx);
+
+  if (fails.length > 0) {
+    document.getElementById('min-fail-msg').style.display = 'block';
+    document.getElementById('min-fail-msg').innerHTML =
+      `⚠ Minimum component failure: ${fails.join(' · ')} — <strong>UNSATISFACTORY regardless of composite</strong>`;
+  } else {
+    document.getElementById('min-fail-msg').style.display = 'none';
+  }
+
+  document.getElementById('results').style.display = 'block';
+  updateAISummary();
+
+  setTimeout(() => {
+    document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
+}
 // ════════════════════════════════════════════════════════
 // ── LIVE COMPONENT SCORING ────────────────────────────────────────────────────
 // Updates a single accordion pill without running the full calculate()
@@ -253,7 +433,7 @@ function liveScoreComponent(component) {
     }
   }
 }
-function calculate() {
+
   // Composite (exempted components redistribute proportionally)
   // Total possible = 15+15+50+20 = 100
   // If exempted, points scale proportionally
