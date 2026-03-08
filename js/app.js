@@ -253,6 +253,7 @@ function liveScoreComponent(component) {
     }
   }
 }
+function calculate() {
   // Composite (exempted components redistribute proportionally)
   // Total possible = 15+15+50+20 = 100
   // If exempted, points scale proportionally
@@ -349,6 +350,7 @@ function liveScoreComponent(component) {
   setTimeout(() => {
     document.getElementById('results').scrollIntoView({behavior:'smooth', block:'start'});
   }, 100);
+}
 }
 
 function clearForm() {
