@@ -166,15 +166,22 @@ function calcWHtR() {
 // ── LIVE COMPONENT SCORING ────────────────────────────────────────────────────
 // Updates a single accordion pill without running the full calculate()
 function liveScoreComponent(component) {
-  const age = document.getElementById('age').value;
-  const ag  = getAG(age);
+  const age = parseInt(document.getElementById('age').value, 10);
+  const ag = getAG(age);
   const currentSex = sex;
-  if(!ag) return;
 
-  if(component === 'pu') {
+  if (!ag) {
+    updateAccPill(component, 0, false);
+    return;
+  }
+
+  if (component === 'pu') {
     const exempt = document.getElementById('puExempt').checked;
-    if(exempt) return;
-    const reps  = parseInt(document.getElementById('puReps').value) || 0;
+    if (exempt) {
+      updateAccPill('pu', null, true);
+      return;
+    }
+    const reps = parseInt(document.getElementById('puReps').value, 10) || 0;
     const table = puType === 'standard'
       ? (currentSex === 'male' ? PU_STD_M : PU_STD_F)
       : (currentSex === 'male' ? PU_HR_M : PU_HR_F);
@@ -182,19 +189,22 @@ function liveScoreComponent(component) {
     updateAccPill('pu', score, false);
   }
 
-  if(component === 'core') {
+  if (component === 'core') {
     const exempt = document.getElementById('coreExempt').checked;
-    if(exempt) return;
+    if (exempt) {
+      updateAccPill('core', null, true);
+      return;
+    }
     let score = 0;
-    if(coreType === 'plank') {
-      const secs  = parsePlankTime(
+    if (coreType === 'plank') {
+      const secs = parsePlankTime(
         document.getElementById('plankMin').value,
         document.getElementById('plankSec').value
       );
       const table = currentSex === 'male' ? PLANK_M : PLANK_F;
       score = lookupHigh(table, ag, secs);
     } else {
-      const reps  = parseInt(document.getElementById('coreReps').value) || 0;
+      const reps = parseInt(document.getElementById('coreReps').value, 10) || 0;
       const table = coreType === 'situp'
         ? (currentSex === 'male' ? SITUP_M : SITUP_F)
         : (currentSex === 'male' ? CLRC_M : CLRC_F);
@@ -203,31 +213,37 @@ function liveScoreComponent(component) {
     updateAccPill('core', score, false);
   }
 
-  if(component === 'cardio') {
+  if (component === 'cardio') {
     const exempt = document.getElementById('cardioExempt').checked;
-    if(exempt) return;
+    if (exempt) {
+      updateAccPill('cardio', null, true);
+      return;
+    }
     let score = 0;
-    if(cardioType === 'run') {
-      const secs  = parseRunTime(
+    if (cardioType === 'run') {
+      const secs = parseRunTime(
         document.getElementById('runMin').value,
         document.getElementById('runSec').value
       );
       const table = currentSex === 'male' ? RUN_M : RUN_F;
       score = secs > 0 ? lookupLow(table, ag, secs) : 0;
     } else {
-      const shuttles = parseInt(document.getElementById('hamrShuttles').value) || 0;
+      const shuttles = parseInt(document.getElementById('hamrShuttles').value, 10) || 0;
       const table = currentSex === 'male' ? HAMR_M : HAMR_F;
       score = shuttles > 0 ? lookupHigh(table, ag, shuttles) : 0;
     }
     updateAccPill('cardio', score, false);
   }
 
-  if(component === 'whtr') {
+  if (component === 'whtr') {
     const exempt = document.getElementById('whtrExempt').checked;
-    if(exempt) return;
+    if (exempt) {
+      updateAccPill('whtr', null, true);
+      return;
+    }
     const w = parseFloat(document.getElementById('waist').value);
     const h = parseFloat(document.getElementById('height').value);
-    if(w && h) {
+    if (w && h) {
       const ratio = w / h;
       const table = currentSex === 'male' ? WHTR_M : WHTR_F;
       const score = lookupLow(table, ag, ratio);
@@ -237,7 +253,6 @@ function liveScoreComponent(component) {
     }
   }
 }
-
   // Composite (exempted components redistribute proportionally)
   // Total possible = 15+15+50+20 = 100
   // If exempted, points scale proportionally
